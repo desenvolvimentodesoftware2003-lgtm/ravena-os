@@ -1,0 +1,131 @@
+# Load partition table and file system modules
+insmod part_gpt
+insmod part_msdos
+insmod fat
+insmod iso9660
+insmod ntfs
+insmod ntfscomp
+insmod exfat
+insmod udf
+
+# Use graphics-mode output
+if loadfont "${prefix}/fonts/unicode.pf2" ; then
+    insmod all_video
+    set gfxmode="auto"
+    set gfxpayload=keep
+    terminal_input console
+    terminal_output gfxterm
+fi
+
+# RAVENA theme (eDEX-UI style)
+set theme="${prefix}/themes/ravena/theme.txt"
+
+# Enable serial console
+insmod serial
+insmod usbserial_common
+insmod usbserial_ftdi
+insmod usbserial_pl2303
+insmod usbserial_usbdebug
+if serial --unit=0 --speed=115200; then
+    terminal_input --append serial
+    terminal_output --append serial
+fi
+
+# Get a human readable platform identifier
+if [ "${grub_platform}" == 'efi' ]; then
+    archiso_platform='UEFI'
+elif [ "${grub_platform}" == 'pc' ]; then
+    archiso_platform='BIOS'
+else
+    archiso_platform="${grub_cpu}-${grub_platform}"
+fi
+
+# Set default menu entry
+default=ravena
+timeout=2
+timeout_style=hidden
+
+# RAVENA one-shot boot: se /ravena.nextboot existir na ESP do pendrive,
+# executa-o (define default p/ o proximo boot). Usado pelo widget BOOT
+# dentro do OS (reiniciar para uma opcao escolhida). O menu fica oculto
+# (boot direto como Windows); segure uma tecla nos 2s p/ ver o menu.
+# Apos usar, o proprio GRUB esvazia o arquivo (sem loop no UEFI Shell/
+# Firmware). Reforco: ravena-nextboot-clean.service limpa no boot do OS.
+if [ "${grub_platform}" == 'efi' ]; then
+    if search --no-floppy --set=ravboot --file /EFI/BOOT/BOOTx64.EFI ; then
+        if [ -f (${ravboot})/ravena.nextboot ]; then
+            source (${ravboot})/ravena.nextboot
+            write (${ravboot})/ravena.nextboot ""
+        fi
+    fi
+fi
+
+
+# Menu entries
+
+menuentry "RAVENA OS (Arch Linux x86_64, ${archiso_platform})" --class arch --class gnu-linux --class gnu --class os --id 'ravena' {
+    set gfxpayload=keep
+    linux /arch/boot/x86_64/vmlinuz-linux archisobasedir=arch archisosearchuuid=2026-08-02-16-18-52-00 persistent=ARCH_PERSISTENT
+    initrd /arch/boot/x86_64/initramfs-linux.img
+}
+
+menuentry "RAVENA OS - Modo Seguro (sem acessibilidade, x86_64, ${archiso_platform})" --hotkey s --class arch --class gnu-linux --class gnu --class os --id 'archlinux-accessibility' {
+    set gfxpayload=keep
+    linux /arch/boot/x86_64/vmlinuz-linux archisobasedir=arch archisosearchuuid=2026-08-02-16-18-52-00 accessibility=on persistent=ARCH_PERSISTENT
+    initrd /arch/boot/x86_64/initramfs-linux.img
+}
+
+
+if [ "${grub_platform}" == 'efi' -a "${grub_cpu}" == 'x86_64' -a -f '/boot/memtest86+/memtest.efi' ]; then
+    menuentry 'Run Memtest86+ (RAM test)' --class memtest86 --class memtest --class gnu --class tool {
+        set gfxpayload=800x600,1024x768
+        linux /boot/memtest86+/memtest.efi
+    }
+fi
+if [ "${grub_platform}" == 'pc' -a -f '/boot/memtest86+/memtest' ]; then
+    menuentry 'Run Memtest86+ (RAM test)' --class memtest86 --class memtest --class gnu --class tool {
+        set gfxpayload=800x600,1024x768
+        linux /boot/memtest86+/memtest
+    }
+fi
+if [ "${grub_platform}" == 'efi' ]; then
+    if [ "${grub_cpu}" == 'x86_64' -a -f '/shellx64.efi' ]; then
+        menuentry 'UEFI Shell' --class efi {
+            chainloader /shellx64.efi
+        }
+    elif [ "${grub_cpu}" == 'i386' -a -f '/shellia32.efi' ]; then
+        menuentry 'UEFI Shell' --class efi {
+            chainloader /shellia32.efi
+        }
+    elif [ "${grub_cpu}" == 'arm64' -a -f '/shellaa64.efi' ]; then
+        menuentry 'UEFI Shell' --class efi {
+            chainloader /shellaa64.efi
+        }
+    elif [ "${grub_cpu}" == 'riscv64' -a -f '/shellriscv64.efi' ]; then
+        menuentry 'UEFI Shell' --class efi {
+            chainloader /shellriscv64.efi
+        }
+    elif [ "${grub_cpu}" == 'loongarch64' -a -f '/shellloongarch64.efi' ]; then
+        menuentry 'UEFI Shell' --class efi {
+            chainloader /shellloongarch64.efi
+        }
+    fi
+
+    menuentry 'UEFI Firmware Settings' --id 'uefi-firmware' {
+        fwsetup
+    }
+fi
+
+menuentry 'System shutdown' --class shutdown --class poweroff {
+    echo 'System shutting down...'
+    halt
+}
+
+menuentry 'System restart' --class reboot --class restart {
+    echo 'System rebooting...'
+    reboot
+}
+
+
+# GRUB init tune for accessibility
+play 600 988 1 1319 4
