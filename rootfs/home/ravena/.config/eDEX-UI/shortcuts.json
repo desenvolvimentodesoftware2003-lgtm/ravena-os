@@ -1,0 +1,140 @@
+[
+    {
+        "trigger": "Ctrl+Shift+T",
+        "action": "NEXT_TAB",
+        "type": "app",
+        "enabled": true
+    },
+    {
+        "trigger": "Ctrl+Shift+W",
+        "action": "PREVIOUS_TAB",
+        "type": "app",
+        "enabled": true
+    },
+    {
+        "trigger": "Ctrl+Shift+E",
+        "action": "SETTINGS",
+        "type": "app",
+        "enabled": true
+    },
+    {
+        "trigger": "Ctrl+Shift+S",
+        "action": "SHORTCUTS",
+        "type": "app",
+        "enabled": true
+    },
+    {
+        "trigger": "Ctrl+Shift+F",
+        "action": "FUZZY_SEARCH",
+        "type": "app",
+        "enabled": true
+    },
+    {
+        "trigger": "Ctrl+Shift+O",
+        "action": "FS_LIST_VIEW",
+        "type": "app",
+        "enabled": true
+    },
+    {
+        "trigger": "Ctrl+Shift+H",
+        "action": "FS_DOTFILES",
+        "type": "app",
+        "enabled": true
+    },
+    {
+        "trigger": "Ctrl+Shift+P",
+        "action": "KB_PASSMODE",
+        "type": "app",
+        "enabled": true
+    },
+    {
+        "trigger": "Ctrl+Shift+D",
+        "action": "DEV_DEBUG",
+        "type": "app",
+        "enabled": true
+    },
+    {
+        "trigger": "Ctrl+Shift+R",
+        "action": "DEV_RELOAD",
+        "type": "app",
+        "enabled": true
+    },
+    {
+        "trigger": "Ctrl+Alt+1",
+        "action": "TAB_X",
+        "type": "app",
+        "enabled": true
+    },
+    {
+        "trigger": "Ctrl+Alt+2",
+        "action": "TAB_2",
+        "type": "app",
+        "enabled": true
+    },
+    {
+        "trigger": "Ctrl+Alt+3",
+        "action": "TAB_3",
+        "type": "app",
+        "enabled": true
+    },
+    {
+        "trigger": "Ctrl+Alt+4",
+        "action": "TAB_4",
+        "type": "app",
+        "enabled": true
+    },
+    {
+        "trigger": "Ctrl+Alt+5",
+        "action": "TAB_5",
+        "type": "app",
+        "enabled": true
+    },
+    {
+        "trigger": "Ctrl+Shift+I",
+        "action": "htop",
+        "type": "shell",
+        "enabled": true,
+        "linebreak": true
+    },
+    {
+        "trigger": "Ctrl+Shift+G",
+        "action": "git status",
+        "type": "shell",
+        "enabled": true,
+        "linebreak": true
+    },
+    {
+        "trigger": "Ctrl+Shift+L",
+        "action": "ls -la",
+        "type": "shell",
+        "enabled": true,
+        "linebreak": true
+    },
+    {
+        "trigger": "Ctrl+Shift+K",
+        "action": "clear",
+        "type": "shell",
+        "enabled": true,
+        "linebreak": true
+    },
+    {
+        "trigger": "Ctrl+Shift+N",
+        "action": "intel",
+        "type": "shell",
+        "enabled": true,
+        "linebreak": true
+    },
+    {
+        "trigger": "Ctrl+Shift+M",
+        "action": "intel mercado",
+        "type": "shell",
+        "enabled": true,
+        "linebreak": true
+    },
+    {
+        "trigger": "Alt+N",
+        "action": "NET_PANEL",
+        "type": "app",
+        "enabled": true
+    }
+]

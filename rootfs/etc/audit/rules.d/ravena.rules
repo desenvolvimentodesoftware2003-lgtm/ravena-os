@@ -1,0 +1,10 @@
+## RAVENA SEC (S7) - regras de auditoria
+-w /etc/shadow -p wa -k ravena_id
+-w /etc/passwd -p wa -k ravena_id
+-w /etc/sudoers -p wa -k ravena_id
+-w /etc/sudoers.d/ -p wa -k ravena_id
+-w /var/run/utmp -p wa -k ravena_login
+-w /etc/ssh/sshd_config -p wa -k ravena_ssh
+-w /etc/ssh/sshd_config.d/ -p wa -k ravena_ssh
+-a always,exit -F arch=b64 -S execve -F auid>=1000 -F auid!=4294967295 -k ravena_exec
+-a always,exit -F arch=b32 -S execve -F auid>=1000 -F auid!=4294967295 -k ravena_exec

@@ -1,0 +1,293 @@
+#!/bin/bash
+# RAVENA LLM - gerenciador de modelos GGUF (llama.cpp) + AirLLM (CPU/GVRAM minima)
+# + turbovec (compressao de vetores/embeddings - TurboQuant)
+#
+# QWEN 27B (provedor local): DavidAU/Qwen3.6-27B-Fable-Fusion-711-Uncensored-Heretic
+#   llm baixar-qwen27b          - baixa Q4_K_M (18GB) para $MODELOS
+#   llm baixar-qwen27b IQ2_M    - baixa quantizacao especifica (menor RAM)
+#   llm provedor                - sobe llama-server (API OpenAI) na :8080 com o 27B
+#   llm chat "pergunta"         - testa a API local (curl /v1/chat/completions)
+#
+# Uso:
+#   llm specs          - mostra hardware e recomenda modelos
+#   llm lista          - lista modelos baixados
+#   llm baixar <URL>   - baixa GGUF do HuggingFace para /mnt/ravena-data/modelos
+#   llm rodar <modelo> - roda chat interativo com llama-cli
+#   llm servidor       - sobe llama-server (API OpenAI local) em :8080
+#   llm top            - top 10 modelos recomendados (com links)
+#   llm airllm <repo>  - roda modelo pesado via AirLLM (layer-wise, camada por camada)
+#   llm airllm-omp <repo> <n> - idem com OMP_NUM_THREADS=n
+#   llm vetor          - demo turbovec: comprime embeddings e busca (31GB -> 4GB)
+#   llm vetor-arquivo <arquivo.txt> - indexa arquivo com turbovec e permite buscar
+
+MODELOS="/mnt/ravena-data/modelos"
+[ -d "$MODELOS" ] || MODELOS="/home/ravena/os/modelos"
+mkdir -p "$MODELOS" 2>/dev/null
+
+QWEN_REPO="DavidAU/Qwen3.6-27B-Fable-Fusion-711-Uncensored-Heretic-NM-DAU-NEO-MAX-MTP-GGUF"
+QWEN_BASE="https://huggingface.co/$QWEN_REPO/resolve/main"
+
+cmd="${1:-}"
+shift 2>/dev/null
+
+cat_airllm() {
+cat <<'PYEOF'
+import sys, time, os
+repo = sys.argv[1]
+from airllm import AutoModel
+t0 = time.time()
+print("carregando (1a vez baixa e fatia o modelo)...")
+model = AutoModel.from_pretrained(repo, device="cpu")
+print("carregado em %.0fs" % (time.time()-t0))
+print("escreva 'sair' para encerrar")
+while True:
+    try:
+        prompt = input("\n>> ")
+    except EOFError:
+        break
+    if prompt.strip().lower() in ("sair","quit","exit"):
+        break
+    if not prompt.strip():
+        continue
+    tk = model.tokenizer(prompt, return_tensors="pt")
+    t1 = time.time()
+    out = model.generate(tk["input_ids"], max_new_tokens=128, do_sample=True)
+    print("\n" + model.tokenizer.decode(out[0].cpu().tolist(), skip_special_tokens=True))
+    print("\n(%.0fs)" % (time.time()-t1))
+PYEOF
+}
+
+cat_vectarq() {
+cat <<'PYEOF'
+import sys, hashlib, numpy as np
+from turbovec import IdMapIndex
+arq = sys.argv[1]
+with open(arq, "r", errors="replace") as f:
+    lines = [l.strip() for l in f if l.strip()]
+if len(lines) > 20000:
+    lines = lines[:20000]
+print("linhas:", len(lines))
+dim = 384
+def embed(text):
+    v = np.zeros(dim, dtype=np.float32)
+    for i, w in enumerate(text.lower().split()[:64]):
+        hh = hashlib.sha256(w.encode()).digest()
+        k = int.from_bytes(hh[:4], "little") % dim
+        v[k] += 1.0
+    n = np.linalg.norm(v)
+    return v / n if n > 0 else v
+vecs = np.stack([embed(l) for l in lines])
+idx = IdMapIndex(dim=dim, bit_width=4)
+idx.add_with_ids(vecs, np.arange(len(lines), dtype=np.uint64))
+print("OK: %d linhas indexadas. Busque frases (vazio p/ sair)." % len(lines))
+while True:
+    try:
+        q = input("\nbusca >> ")
+    except EOFError:
+        break
+    if not q.strip():
+        break
+    ids, scores = idx.search(embed(q).reshape(1, -1), k=5)
+    for i in range(ids.shape[1]):
+        print(" [%.3f] %s" % (scores[0, i], lines[int(ids[0, i])][:120]))
+PYEOF
+}
+
+case "$cmd" in
+  specs)
+    echo "=== CPU ==="; lscpu | grep -E "Model name|^CPU\(s\)|Thread|Core|Socket" | head -8
+    echo "=== RAM ==="; free -h | head -3
+    echo "=== GPU ==="; lspci 2>/dev/null | grep -iE "vga|3d|display" || echo "sem GPU dedicada detectada"
+    total_mb=$(awk '/MemTotal/{print int($2/1024)}' /proc/meminfo)
+    echo "=== RECOMENDACAO (RAM $total_mb MB) ==="
+    if [ "$total_mb" -lt 8000 ]; then
+      echo "  GGUF ate 7-8B Q4 (~5GB) via llama.cpp (rapido)"
+      echo "  27B: baixar quant IQ2_M (11.7GB, usa swap) ou AirLLM camada a camada"
+    elif [ "$total_mb" -lt 16000 ]; then
+      echo "  GGUF ate 14B Q4; 27B Q4_K_M com mmap; AirLLM para 32B+"
+    else
+      echo "  13B+ via GGUF; 27B Q4_K_M confortavel; AirLLM 70B+ possivel"
+    fi
+    ;;
+  lista|list)
+    echo "Modelos em $MODELOS:"
+    ls -lah "$MODELOS" 2>/dev/null | grep -v "^total" || echo "  (vazio)"
+    ;;
+  baixar|download)
+    url="${1:-}"
+    [ -z "$url" ] && { echo "uso: llm baixar <URL-do-GGUF>"; exit 1; }
+    fname=$(basename "$url")
+    echo "Baixando $fname -> $MODELOS/"
+    wget -c --show-progress -O "$MODELOS/$fname" "$url" || curl -C - -L -o "$MODELOS/$fname" "$url"
+    echo "OK: $MODELOS/$fname"
+    ;;
+  baixar-qwen27b|baixar-qwen)
+    quant="${1:-Q4_K_M}"
+    case "$quant" in
+      Q4_K_M|Q4_K_S|Q5_K_M|Q5_K_S|Q6_K|Q8_0|IQ2_M|IQ3_M|IQ4_XS|IQ4_NL|MTP-Q4_K_M|MTP-IQ2_M|MTP-IQ3_M|MTP-IQ4_XS) ;;
+      *) echo "quantizacao invalida: $quant"; echo "opcoes: Q4_K_M Q4_K_S Q5_K_M IQ3_M IQ2_M MTP-IQ2_M MTP-IQ3_M MTP-IQ4_XS"; exit 1;;
+    esac
+    fname="Qwen3.6-27B-Fable-Fus-711-UnHeretic-NM-DAU-NEO-MAX-NEO-${quant}.gguf"
+    url="$QWEN_BASE/$fname"
+    echo "Baixando $fname (~18GB p/ Q4_K_M) para $MODELOS/"
+    echo "  dica: IQ2_M = 11.7GB (melhor p/ 8GB RAM); MTP = multi-token prediction (mais rapido)"
+    wget -c --show-progress -O "$MODELOS/$fname" "$url" || curl -C - -L -o "$MODELOS/$fname" "$url"
+    echo "OK: $MODELOS/$fname"
+    echo "Proximo passo: llm provedor   (sobe API OpenAI local na :8080)"
+    ;;
+  provedor|server-qwen|servir-qwen)
+    # prioridade 1: Dark Planet 8B local (squashfs ou RAVENA-DATA) via
+    # ravena-llm.service (cgroups: CPUQuota 90%, MemoryHigh 6G - seguro
+    # para o trading). O servico copia o GGUF p/ RAVENA-DATA na 1a vez.
+    DP=$(ls /home/ravena/os/modelos/L3-Dark-Planet*gguf 2>/dev/null | head -1)
+    if [ -n "$DP" ] && command -v systemctl >/dev/null 2>&1; then
+        if systemctl is-active ravena-llm >/dev/null 2>&1; then
+            echo "RAVENA-LLM ja ativo em http://localhost:8080"
+            echo "  - API:  http://localhost:8080/v1/chat/completions"
+            echo "  - Teste: llm chat 'sua pergunta'"
+            exit 0
+        fi
+        echo "Subindo RAVENA-LLM (Dark Planet 8B) em http://localhost:8080"
+        echo "  - API:  http://localhost:8080/v1/chat/completions"
+        echo "  - UI:   http://localhost:8080  (abre no navegador)"
+        echo "  - Teste: llm chat 'sua pergunta'"
+        systemctl start ravena-llm
+        sleep 3
+        systemctl is-active ravena-llm >/dev/null 2>&1 && exit 0
+        echo "AVISO: servico nao subiu - tentando Qwen 27B direto..."
+    fi
+    quant="${1:-Q4_K_M}"
+    fname="Qwen3.6-27B-Fable-Fus-711-UnHeretic-NM-DAU-NEO-MAX-NEO-${quant}.gguf"
+    f="$MODELOS/$fname"
+    [ -f "$f" ] || f="$MODELOS/$(ls "$MODELOS" 2>/dev/null | grep -i "$quant" | head -1)"
+    [ -f "$f" ] || f="$MODELOS/$(ls "$MODELOS" 2>/dev/null | grep -i qwen3.6 | head -1)"
+    if [ ! -f "$f" ]; then
+      echo "Qwen 27B nao baixado. Rode: llm baixar-qwen27b $quant"
+      exit 1
+    fi
+    total_mb=$(awk '/MemTotal/{print int($2/1024)}' /proc/meminfo)
+    echo "RAM: ${total_mb}MB | modelo: $(du -sh "$f" | cut -f1)"
+    if [ "$total_mb" -lt 12000 ]; then
+      echo "AVISO: RAM < 12GB - usara swap/mmap (lento mas roda). Sugestao: quant IQ2_M"
+    fi
+    echo "Subindo provedor OpenAI-compativel em http://localhost:8080"
+    echo "  - API:  http://localhost:8080/v1/chat/completions"
+    echo "  - UI:   http://localhost:8080  (abre no navegador)"
+    echo "  - Teste: llm chat 'sua pergunta'"
+    llama-server -m "$f" -c 8192 --port 8080 -ngl 99 --mmap --threads "$(nproc)" 2>/dev/null \
+      || llama-server -m "$f" -c 8192 --port 8080 -ngl 99 --threads "$(nproc)"
+    ;;
+  chat)
+    q="${*:-}"
+    if [ -z "$q" ]; then
+      echo "uso: llm chat 'sua pergunta'  (requer llm provedor rodando)"
+      exit 1
+    fi
+    curl -s --max-time 300 http://localhost:8080/v1/chat/completions \
+      -H "Content-Type: application/json" \
+      -d "{\"model\":\"qwen\",\"messages\":[{\"role\":\"user\",\"content\":\"$q\"}]}" \
+      | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['choices'][0]['message']['content'])"
+    ;;
+  rodar|run|chat)
+    m="${1:-}"
+    if [ -z "$m" ]; then
+      echo "Modelos disponiveis:"; ls "$MODELOS" 2>/dev/null | grep -i gguf || echo "nenhum"
+      echo "uso: llm rodar <arquivo.gguf>"
+      exit 1
+    fi
+    f="$MODELOS/$m"
+    [ -f "$f" ] || f="$MODELOS/$(ls "$MODELOS" 2>/dev/null | grep -i "$m" | head -1)"
+    [ -f "$f" ] || { echo "modelo nao encontrado: $m"; exit 1; }
+    echo "Carregando $(basename "$f") ... (primeira resposta mais lenta)"
+    llama-cli -m "$f" -c 4096 -ngl 99 2>/dev/null || llama-cli -m "$f" -c 4096
+    ;;
+  servidor|server)
+    m="${1:-}"
+    if [ -z "$m" ]; then
+      ls "$MODELOS" 2>/dev/null | grep -i gguf || echo "nenhum modelo"
+      echo "uso: llm servidor <arquivo.gguf>"
+      exit 1
+    fi
+    f="$MODELOS/$m"
+    [ -f "$f" ] || f="$MODELOS/$(ls "$MODELOS" 2>/dev/null | grep -i "$m" | head -1)"
+    [ -f "$f" ] || { echo "modelo nao encontrado: $m"; exit 1; }
+    echo "Subindo API em http://localhost:8080 ..."
+    llama-server -m "$f" -c 8192 --port 8080 -ngl 99 2>/dev/null || llama-server -m "$f" -c 8192 --port 8080
+    ;;
+  airllm|airllm-omp)
+    repo="${1:-}"
+    nthreads="${2:-}"
+    if [ -z "$repo" ]; then
+      echo "uso: llm $cmd <repo-HuggingFace> [threads]"
+      echo "ex : llm $cmd TinyLlama/TinyLlama-1.1B-Chat-v1.0"
+      echo "ex : llm $cmd $QWEN_REPO 4"
+      exit 1
+    fi
+    [ -n "$nthreads" ] || nthreads=$(nproc)
+    echo "AirLLM: $repo (camada por camada, OMP=$nthreads) ..."
+    tmp_py=$(mktemp /tmp/llm_airllm_XXXX.py)
+    cat_airllm > "$tmp_py"
+    OMP_NUM_THREADS=$nthreads HF_HUB_DISABLE_PROGRESS_BARS=1 python3 "$tmp_py" "$repo"
+    rm -f "$tmp_py"
+    ;;
+  vetor)
+    echo "turbovec: compressao de vetores/embeddings (TurboQuant do Google)"
+    echo "10M docs = 31GB float32 -> ~4GB, busca mais rapida que FAISS"
+    echo "usar: llm vetor-arquivo <arquivo.txt>  (indexa e busca)"
+    python3 - <<'PYEOF'
+import numpy as np
+try:
+    from turbovec import IdMapIndex
+except ImportError as e:
+    print("turbovec nao instalado:", e)
+    raise SystemExit(1)
+rng = np.random.default_rng(7)
+dim, N = 384, 5000
+data = rng.random((N, dim), dtype=np.float32)
+data /= np.linalg.norm(data, axis=1, keepdims=True)
+idx = IdMapIndex(dim=dim, bit_width=4)
+idx.add_with_ids(data, np.arange(N, dtype=np.uint64))
+ids, scores = idx.search(data[3:4], k=5)
+print("OK: 5000 vetores 384-dim comprimidos p/ 4-bit, busca top1 ->", int(ids[0,0]))
+print("memoria float32: %.1f MB | turbovec 4-bit: ~%.1f MB" % (
+    N*dim*4/1e6, N*dim*0.5/1e6))
+PYEOF
+    ;;
+  vetor-arquivo)
+    arq="${1:-}"
+    if [ -z "$arq" ] || [ ! -f "$arq" ]; then
+      echo "uso: llm vetor-arquivo <arquivo.txt>"
+      exit 1
+    fi
+    echo "Indexando $arq com turbovec (embeddings locais deterministicos)..."
+    tmp_py=$(mktemp /tmp/llm_vectarq_XXXX.py)
+    cat_vectarq > "$tmp_py"
+    python3 "$tmp_py" "$arq"
+    rm -f "$tmp_py"
+    ;;
+  top)
+    echo "Modelos recomendados (HuggingFace, GGUF Q4_K_M):"
+    echo " 3B : https://huggingface.co/Qwen/Qwen2.5-3B-Instruct-GGUF/resolve/main/qwen2.5-3b-instruct-q4_k_m.gguf"
+    echo " 7B : https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-GGUF/resolve/main/qwen2.5-7b-instruct-q4_k_m.gguf"
+    echo "14B : https://huggingface.co/Qwen/Qwen2.5-14B-Instruct-GGUF/resolve/main/qwen2.5-14b-instruct-q4_k_m.gguf"
+    echo "32B : https://huggingface.co/Qwen/Qwen2.5-32B-Instruct-GGUF/resolve/main/qwen2.5-32b-instruct-q4_k_m.gguf"
+    echo
+    echo "QWEN 27B UNCENSORED (DavidAU) - o do seu link:"
+    echo "  llm baixar-qwen27b Q4_K_M   (18GB, mais qualidade)"
+    echo "  llm baixar-qwen27b IQ2_M    (11.7GB, melhor p/ 8GB RAM)"
+    echo "  llm provedor                (sobe API OpenAI local :8080)"
+    echo "  llm chat 'pergunta'         (testa o provedor)"
+    echo
+    echo "AirLLM (modelos pesados direto do HF, ex):"
+    echo "  llm airllm Qwen/Qwen2.5-14B-Instruct"
+    echo "  llm airllm-omp Qwen/Qwen2.5-32B-Instruct 4"
+    echo
+    echo "uso: llm baixar <URL>  |  llm rodar <arquivo>  |  llm airllm <repo>"
+    ;;
+  *)
+    echo "RAVENA LLM (llama.cpp + AirLLM + turbovec)"
+    echo "  llm specs | lista | baixar <URL> | rodar <gguf> | servidor <gguf> | top"
+    echo "  llm baixar-qwen27b <quant> | provedor | chat 'pergunta'"
+    echo "  llm airllm <repo-HF> | airllm-omp <repo> <n> | vetor | vetor-arquivo <txt>"
+    ;;
+esac

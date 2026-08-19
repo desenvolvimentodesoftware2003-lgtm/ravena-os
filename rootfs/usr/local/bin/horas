@@ -1,0 +1,7 @@
+#!/bin/bash
+# RAVENA - mostra quanto tempo o sistema esta ligado
+UP=$(uptime -p 2>/dev/null | sed 's/up //')
+AGORA=$(date '+%d/%m/%Y %H:%M:%S %Z')
+echo "Ligado ha:  $UP"
+echo "Agora:      $AGORA"
+echo "Ultimo boot: $(uptime -s 2>/dev/null)"

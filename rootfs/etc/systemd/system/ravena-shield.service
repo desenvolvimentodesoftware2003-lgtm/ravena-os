@@ -1,0 +1,18 @@
+# RAVENA SHIELD - guardiao de memoria contra OOM (margem 10%)
+# Referencia: FASE0-TRIAGEM-REPOS-RAVENA.md (NVML check_ravena_shield_vram)
+[Unit]
+Description=RAVENA Shield (NVML) - guardiao de memoria contra OOM
+After=ravena-data.service ravena-swap.service
+Requires=ravena-swap.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/ravena-shield.sh
+Restart=always
+RestartSec=5
+# roda fora da slice do LLM p/ ter poder de decisao
+CPUWeight=10
+MemoryLow=64M
+
+[Install]
+WantedBy=multi-user.target

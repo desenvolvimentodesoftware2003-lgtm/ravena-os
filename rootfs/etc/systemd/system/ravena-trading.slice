@@ -1,0 +1,5 @@
+[Unit]
+Description=Ravena trading slice (maior prioridade de CPU)
+[Slice]
+CPUWeight=100
+MemoryLow=800M

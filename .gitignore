@@ -1,0 +1,24 @@
+# ISOs nunca sao versionadas (7.8GB)
+*.iso
+*.sfs
+
+# Logs e artefatos de build
+*.log
+*.ppm
+build_v19.log
+boot_*.log
+
+# Segredos / dados pessoais
+apiopenai.txt
+*api*.txt
+
+# Python
+__pycache__/
+*.pyc
+
+# Node
+node_modules/
+
+# OS
+Thumbs.db
+.DS_Store

@@ -1,0 +1,11 @@
+[Unit]
+Description=Ravena network bootstrap (DHCP+wifi)
+After=NetworkManager.service
+Wants=NetworkManager.service
+Before=getty@tty1.service
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/ravena-net.sh
+RemainAfterExit=yes
+[Install]
+WantedBy=multi-user.target

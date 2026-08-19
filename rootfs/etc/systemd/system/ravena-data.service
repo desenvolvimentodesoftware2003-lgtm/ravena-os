@@ -1,0 +1,13 @@
+[Unit]
+Description=Ravena dados persistentes (RAVENA-DATA)
+DefaultDependencies=no
+Requires=local-fs.target
+After=local-fs.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/bin/ravena-data.sh
+
+[Install]
+WantedBy=sysinit.target

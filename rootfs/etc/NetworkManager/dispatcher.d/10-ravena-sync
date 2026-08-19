@@ -1,0 +1,12 @@
+#!/bin/bash
+# RAVENA - sincroniza perfis WiFi p/ RAVENA-DATA assim que uma conexao e
+# estabelecida (cobre a bolha 'net' do eDEX, que conecta depois do boot)
+IFACE="$1"
+ACTION="$2"
+[ "$ACTION" = "up" ] || exit 0
+case "$IFACE" in
+    wl*) ;;
+    *) exit 0 ;;
+esac
+sleep 2
+/usr/local/bin/ravena-sync-rede.sh >/dev/null 2>&1 || true

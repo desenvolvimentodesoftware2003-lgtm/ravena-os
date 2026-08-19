@@ -1,0 +1,19 @@
+[Unit]
+Description=RAVENA LLM provider (airLLM - llama-server fallback)
+After=ravena-data.service network-online.target
+Wants=network-online.target
+Slice=ravena-llm.slice
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/ravena-llm.sh
+Restart=on-failure
+RestartSec=10
+# cgroups v2: isola o llama do trading. MemoryHigh (suave) preserva swap/mmap
+CPUQuota=90%
+MemoryHigh=6G
+MemorySwapMax=8G
+IOSchedulingClass=idle
+
+[Install]
+WantedBy=multi-user.target

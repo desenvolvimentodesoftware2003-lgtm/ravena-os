@@ -1,0 +1,13 @@
+[Unit]
+Description=RAVENA SEC - expiracao de senha (90 dias)
+After=local-fs.target
+ConditionPathExists=!/etc/ravena/.chage-done
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/chage -M 90 -W 7 ravena
+ExecStart=/usr/bin/touch /etc/ravena/.chage-done
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

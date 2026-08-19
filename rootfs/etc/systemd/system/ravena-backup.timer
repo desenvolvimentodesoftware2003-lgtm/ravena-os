@@ -1,0 +1,11 @@
+[Unit]
+Description=Dispara ravena-backup diariamente as 03:00
+Requires=ravena-data.service
+After=ravena-data.service
+
+[Timer]
+OnCalendar=*-*-* 03:00:00
+Persistent=true
+
+[Install]
+WantedBy=timers.target

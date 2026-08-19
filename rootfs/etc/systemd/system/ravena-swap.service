@@ -1,0 +1,13 @@
+[Unit]
+Description=Ravena swapfile no pendrive (unificacao de memoria)
+DefaultDependencies=no
+Requires=local-fs.target ravena-data.service
+After=local-fs.target ravena-data.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/bin/ravena-swap.sh
+
+[Install]
+WantedBy=sysinit.target

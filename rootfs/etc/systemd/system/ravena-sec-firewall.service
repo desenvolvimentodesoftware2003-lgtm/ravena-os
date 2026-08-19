@@ -1,0 +1,13 @@
+[Unit]
+Description=RAVENA SEC - firewall de entrada (LAN only)
+After=network-pre.target
+Before=network.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/sbin/nft -f /etc/ravena/ravena-sec-firewall.nft
+ExecStop=/usr/sbin/nft delete table inet ravena-sec
+
+[Install]
+WantedBy=multi-user.target

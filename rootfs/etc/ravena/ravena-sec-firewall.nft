@@ -1,0 +1,25 @@
+#!/usr/sbin/nft -f
+# RAVENA SEC (S1,S4,S5) - firewall de entrada: so LAN/loopback, resto drop
+table inet ravena-sec {
+    chain input {
+        type filter hook input priority filter - 5; policy accept;
+
+        # loopback livre
+        iif "lo" accept
+
+        # ICMP (ping) livre
+        ip protocol icmp accept
+        ip6 nexthdr icmpv6 accept
+
+        # SSH (22) e IA (8080): somente de sub-redes privadas (LAN da casa/escritorio)
+        # e 10.0.2.0/24 (NAT do VirtualBox p/ teste) e 172.16-31/12 (VPN wireguard)
+        ip saddr { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 } tcp dport 22 accept
+        ip saddr { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 } tcp dport 8080 accept
+
+        # estabelecidas/relacionadas
+        ct state established,related accept
+
+        # resto: drop (nada de fora chega)
+        drop
+    }
+}

@@ -1,0 +1,17 @@
+[Unit]
+Description=RAVENA Health - monitora servicos criticos e alerta em tela
+Documentation=man:ravena-health
+After=ravena-llm.service ravena-net.service ravena-ntp.service ravena-data.service
+Wants=ravena-llm.service ravena-net.service ravena-ntp.service ravena-data.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/ravena-health.sh
+Restart=on-failure
+RestartSec=5
+Nice=10
+# nunca deixa o monitor derrubar o sistema
+TimeoutStopSec=10
+
+[Install]
+WantedBy=multi-user.target

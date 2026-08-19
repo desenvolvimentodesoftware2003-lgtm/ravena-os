@@ -1,0 +1,10 @@
+[Unit]
+Description=Backup diario dos configs do RAVENA para /mnt/ravena-data/backup
+Documentation=man:ravena-backup
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/ravena-backup.sh
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=300
