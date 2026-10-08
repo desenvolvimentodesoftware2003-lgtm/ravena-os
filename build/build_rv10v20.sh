@@ -44,7 +44,7 @@ echo "=== xorriso remaster (base RV10 + grub.cfg oculto v17, timeout 1200s) ==="
 timeout 1200 xorriso -indev ravena-remaster-RV10-base.iso -outdev $NAME.iso \
   -map $NAME.sfs /arch/x86_64/airootfs.sfs \
   -map $NAME.sfs.sha512 /arch/x86_64/airootfs.sha512 \
-  -map /root/ravv2/grub.cfg.rav17 /boot/grub/grub.cfg \
+  -map build/legacy/grub.cfg.rav17 /boot/grub/grub.cfg \
   -boot_image any replay -commit 2>&1 | tail -3
 RC=$?
 if [ "$RC" != "0" ]; then

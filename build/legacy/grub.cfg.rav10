@@ -59,15 +59,17 @@ fi
 
 # Menu entries
 
+# cow_label=ARCH_PERSISTENT: parametro que o archiso realmente le (o antigo
+# "persistent=" era inerte e deixava o overlay no tmpfs). Ver grub.cfg.rav17.
 menuentry "RAVENA OS (Arch Linux x86_64, ${archiso_platform})" --class arch --class gnu-linux --class gnu --class os --id 'ravena' {
     set gfxpayload=keep
-    linux /arch/boot/x86_64/vmlinuz-linux archisobasedir=arch archisosearchuuid=2026-08-02-16-18-52-00 persistent=ARCH_PERSISTENT
+    linux /arch/boot/x86_64/vmlinuz-linux archisobasedir=arch archisosearchuuid=2026-08-02-16-18-52-00 cow_label=ARCH_PERSISTENT
     initrd /arch/boot/x86_64/initramfs-linux.img
 }
 
 menuentry "RAVENA OS - Modo Seguro (sem acessibilidade, x86_64, ${archiso_platform})" --hotkey s --class arch --class gnu-linux --class gnu --class os --id 'archlinux-accessibility' {
     set gfxpayload=keep
-    linux /arch/boot/x86_64/vmlinuz-linux archisobasedir=arch archisosearchuuid=2026-08-02-16-18-52-00 accessibility=on persistent=ARCH_PERSISTENT
+    linux /arch/boot/x86_64/vmlinuz-linux archisobasedir=arch archisosearchuuid=2026-08-02-16-18-52-00 accessibility=on cow_label=ARCH_PERSISTENT
     initrd /arch/boot/x86_64/initramfs-linux.img
 }
 

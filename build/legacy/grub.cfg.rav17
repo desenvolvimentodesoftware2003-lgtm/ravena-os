@@ -63,15 +63,22 @@ fi
 
 # Menu entries
 
+# Persistencia: o archiso so monta /run/archiso/cowspace a partir de uma
+# particao real quando recebe cow_label= (ou cow_device=) no cmdline - ai o
+# overlay do rootfs sobrevive ao reboot. O parametro antigo "persistent=" era
+# inerte: nenhum hook do initcpio le esse nome, entao o overlay ficava sempre
+# no tmpfs de 256M e TODA mudanca morria no reinicio. Exige uma particao com
+# rotulo ARCH_PERSISTENT (ext4) no disco.
+
 menuentry "RAVENA OS (Arch Linux x86_64, ${archiso_platform})" --class arch --class gnu-linux --class gnu --class os --id 'ravena' {
     set gfxpayload=keep
-    linux /arch/boot/x86_64/vmlinuz-linux archisobasedir=arch archisosearchuuid=2026-08-02-16-18-52-00 persistent=ARCH_PERSISTENT
+    linux /arch/boot/x86_64/vmlinuz-linux archisobasedir=arch archisosearchuuid=2026-08-02-16-18-52-00 cow_label=ARCH_PERSISTENT
     initrd /arch/boot/x86_64/initramfs-linux.img
 }
 
 menuentry "RAVENA OS - Modo Seguro (sem acessibilidade, x86_64, ${archiso_platform})" --hotkey s --class arch --class gnu-linux --class gnu --class os --id 'archlinux-accessibility' {
     set gfxpayload=keep
-    linux /arch/boot/x86_64/vmlinuz-linux archisobasedir=arch archisosearchuuid=2026-08-02-16-18-52-00 accessibility=on persistent=ARCH_PERSISTENT
+    linux /arch/boot/x86_64/vmlinuz-linux archisobasedir=arch archisosearchuuid=2026-08-02-16-18-52-00 accessibility=on cow_label=ARCH_PERSISTENT
     initrd /arch/boot/x86_64/initramfs-linux.img
 }
 
