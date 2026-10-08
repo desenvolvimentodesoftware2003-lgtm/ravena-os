@@ -502,13 +502,25 @@ RES=""
 for i in $(seq 1 30); do
     RES=$(part_type)
     [ -n "$RES" ] && break
+    # a particao so pode aparecer se houver disco removivel (USB): e o unico
+    # alvo de create_data_partition. Sem USB, re-escanear 30x nao muda nada e
+    # trava o sysinit.target (e junto a UI) por 30s a cada boot.
+    tem_usb=0
+    for d in $(lsblk -n -d -o NAME -r 2>/dev/null); do
+        [ "$(cat "/sys/class/block/$d/removable" 2>/dev/null)" = "1" ] && tem_usb=1
+    done
+    [ "$tem_usb" = "1" ] || break
     sleep 1
 done
 
 if [ -z "$RES" ]; then
     # modo DD: pendrive sem particao de dados - tenta criar no espaco
     # livre apos o ISO (so pendrive removivel com espaco >= 4GiB)
-    NP=$(create_data_partition)
+    # o || NP="" e OBRIGATORIO: create_data_partition devolve 1 quando nao ha
+    # USB/espaco (disco interno, VDI da VM, boot instalado) e, com `set -e`,
+    # uma atribuicao com falha encerra o script com exit 1 - transformando um
+    # "sem persistencia" (exit 0) em failed do systemd.
+    NP=$(create_data_partition) || NP=""
     if [ -n "$NP" ]; then
         RES="new:/dev/$NP"
     fi
