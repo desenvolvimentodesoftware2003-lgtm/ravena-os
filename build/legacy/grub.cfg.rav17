@@ -2,6 +2,7 @@
 insmod part_gpt
 insmod part_msdos
 insmod fat
+insmod ext2
 insmod iso9660
 insmod ntfs
 insmod ntfscomp
@@ -64,21 +65,30 @@ fi
 # Menu entries
 
 # Persistencia: o archiso so monta /run/archiso/cowspace a partir de uma
-# particao real quando recebe cow_label= (ou cow_device=) no cmdline - ai o
-# overlay do rootfs sobrevive ao reboot. O parametro antigo "persistent=" era
-# inerte: nenhum hook do initcpio le esse nome, entao o overlay ficava sempre
-# no tmpfs de 256M e TODA mudanca morria no reinicio. Exige uma particao com
-# rotulo ARCH_PERSISTENT (ext4) no disco.
+# particao real quando o cmdline traz cow_label= (ou cow_device=). O
+# parametro antigo "persistent=" era inerte - nenhum hook do initcpio le
+# esse nome - e o overlay ficava no tmpfs de 256M, morrendo no reinicio.
+# A particao e testada aqui, nunca assumida: com um volume rotulado
+# ARCH_PERSISTENT (ext4) o ravena_cow leva o cow_label=; sem ele o boot
+# segue normal em tmpfs, em vez de o initramfs abortar por falta da
+# particao e deixar a maquina sem subir. search_label precisa do ext2
+# (ext4) carregado la em cima; se o modulo faltar, cai no boot normal.
+ravena_cow=''
+if insmod search_label ; then
+    if search --no-floppy --set=ravena_persistdev --label ARCH_PERSISTENT ; then
+        ravena_cow='cow_label=ARCH_PERSISTENT'
+    fi
+fi
 
 menuentry "RAVENA OS (Arch Linux x86_64, ${archiso_platform})" --class arch --class gnu-linux --class gnu --class os --id 'ravena' {
     set gfxpayload=keep
-    linux /arch/boot/x86_64/vmlinuz-linux archisobasedir=arch archisosearchuuid=2026-08-02-16-18-52-00 cow_label=ARCH_PERSISTENT
+    linux /arch/boot/x86_64/vmlinuz-linux archisobasedir=arch archisosearchuuid=2026-08-02-16-18-52-00 ${ravena_cow}
     initrd /arch/boot/x86_64/initramfs-linux.img
 }
 
 menuentry "RAVENA OS - Modo Seguro (sem acessibilidade, x86_64, ${archiso_platform})" --hotkey s --class arch --class gnu-linux --class gnu --class os --id 'archlinux-accessibility' {
     set gfxpayload=keep
-    linux /arch/boot/x86_64/vmlinuz-linux archisobasedir=arch archisosearchuuid=2026-08-02-16-18-52-00 accessibility=on cow_label=ARCH_PERSISTENT
+    linux /arch/boot/x86_64/vmlinuz-linux archisobasedir=arch archisosearchuuid=2026-08-02-16-18-52-00 accessibility=on ${ravena_cow}
     initrd /arch/boot/x86_64/initramfs-linux.img
 }
 
