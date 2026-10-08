@@ -4,6 +4,7 @@
 Serve /v1/chat/completions usando AirLLM com o checkpoint Qwen text-only
 convertido (sem visual/mtp). Sem dependencias extras (wsgiref).
 """
+
 import json
 import os
 import sys
@@ -22,12 +23,13 @@ t0 = time.time()
 from airllm import AutoModel
 
 model = AutoModel.from_pretrained(MODEL_DIR, device="cpu", max_seq_len=8192)
-print(f"ravena-airllm: carregado em {time.time()-t0:.0f}s", flush=True)
+print(f"ravena-airllm: carregado em {time.time() - t0:.0f}s", flush=True)
 print(f"ravena-airllm: pronto em :{PORT}", flush=True)
 
 from wsgiref.simple_server import make_server
 
 LOCK = threading.Lock()
+
 
 def chat_completion(messages):
     with LOCK:
@@ -43,14 +45,20 @@ def chat_completion(messages):
         ids = model.tokenizer(prompt, return_tensors="pt")["input_ids"]
         ids = ids[:, -8191:]
         t1 = time.time()
-        out = model.generate(ids, max_new_tokens=MAX_NEW, do_sample=True, temperature=0.7, top_p=0.95)
+        out = model.generate(
+            ids, max_new_tokens=MAX_NEW, do_sample=True, temperature=0.7, top_p=0.95
+        )
         gen = time.time() - t1
         text = model.tokenizer.decode(out[0].tolist(), skip_special_tokens=True)
         return text, gen
 
+
 def application(environ, start_response):
     global MAX_NEW
-    if environ.get("PATH_INFO") == "/v1/chat/completions" and environ["REQUEST_METHOD"] == "POST":
+    if (
+        environ.get("PATH_INFO") == "/v1/chat/completions"
+        and environ["REQUEST_METHOD"] == "POST"
+    ):
         try:
             length = int(environ.get("CONTENT_LENGTH", 0))
             body = json.loads(environ["wsgi.input"].read(length) or b"{}")
@@ -62,26 +70,47 @@ def application(environ, start_response):
                 "id": "ravena-airllm",
                 "object": "chat.completion",
                 "model": "qwen",
-                "choices": [{"index": 0, "message": {"role": "assistant", "content": text},
-                             "finish_reason": "stop"}],
-                "usage": {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0},
+                "choices": [
+                    {
+                        "index": 0,
+                        "message": {"role": "assistant", "content": text},
+                        "finish_reason": "stop",
+                    }
+                ],
+                "usage": {
+                    "prompt_tokens": 0,
+                    "completion_tokens": 0,
+                    "total_tokens": 0,
+                },
                 "gen_seconds": round(gen, 2),
             }
             payload = json.dumps(resp).encode()
-            start_response("200 OK", [("Content-Type", "application/json"), ("Content-Length", str(len(payload)))])
+            start_response(
+                "200 OK",
+                [
+                    ("Content-Type", "application/json"),
+                    ("Content-Length", str(len(payload))),
+                ],
+            )
             return [payload]
         except Exception as e:  # noqa: BLE001
             err = json.dumps({"error": {"message": str(e)}}).encode()
-            start_response("500 Internal Server Error", [("Content-Type", "application/json")])
+            start_response(
+                "500 Internal Server Error", [("Content-Type", "application/json")]
+            )
             return [err]
-    if environ.get("PATH_INFO") == "/" :
+    if environ.get("PATH_INFO") == "/":
         payload = b"RAVENA airLLM provider :8080"
         start_response("200 OK", [("Content-Type", "text/plain")])
         return [payload]
     start_response("404 Not Found", [("Content-Type", "text/plain")])
     return [b"not found"]
 
+
 if __name__ == "__main__":
     server = make_server("0.0.0.0", PORT, application)
-    print(f"ravena-airllm: servindo em http://0.0.0.0:{PORT}/v1/chat/completions", flush=True)
+    print(
+        f"ravena-airllm: servindo em http://0.0.0.0:{PORT}/v1/chat/completions",
+        flush=True,
+    )
     server.serve_forever()
