@@ -20,14 +20,7 @@ esp=$(find_esp) || exit 0
 mkdir -p /mnt/ravboot
 mount -o rw "$esp" /mnt/ravboot 2>/dev/null || exit 0
 if [ -f /mnt/ravboot/ravena.nextboot ]; then
-    # NAO apaga o one-shot de persistencia: ele precisa existir para o GRUB
-    # sourcear no proximo boot e manter cow_label=ARCH_PERSISTENT. O
-    # ravena-persist.sh regrava esse arquivo a cada boot; apagar aqui zeraria
-    # a persistencia. Os demais one-shots (set default do widget BOOT) continuam
-    # sendo removidos normalmente.
-    if ! grep -q 'cow_label=' /mnt/ravboot/ravena.nextboot 2>/dev/null; then
-        rm -f /mnt/ravboot/ravena.nextboot
-    fi
+    rm -f /mnt/ravboot/ravena.nextboot
     sync
 fi
 umount /mnt/ravboot 2>/dev/null
