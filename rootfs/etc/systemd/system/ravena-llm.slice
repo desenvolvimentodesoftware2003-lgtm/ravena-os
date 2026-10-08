@@ -1,0 +1,4 @@
+[Slice]
+Description=RAVENA LLM provider slice (isola o llama do trading)
+# peso baixo: quando a caixa disputa CPU, o llama cede p/ trading e eDEX
+CPUWeight=10
