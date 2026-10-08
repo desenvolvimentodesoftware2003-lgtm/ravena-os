@@ -4,7 +4,11 @@
 Serve /v1/chat/completions usando AirLLM com o checkpoint Qwen text-only
 convertido (sem visual/mtp). Sem dependencias extras (wsgiref).
 """
-import os, sys, json, threading, time
+import json
+import os
+import sys
+import threading
+import time
 
 os.environ["HF_HUB_DISABLE_PROGRESS_BARS"] = "1"
 os.environ.setdefault("TRANSFORMERS_NO_ADVISORY_WARNINGS", "1")
@@ -16,9 +20,10 @@ MAX_NEW = int(os.environ.get("LLM_MAX_NEW_TOKENS", "512"))
 print(f"ravena-airllm: carregando {MODEL_DIR} ...", flush=True)
 t0 = time.time()
 from airllm import AutoModel
+
 model = AutoModel.from_pretrained(MODEL_DIR, device="cpu", max_seq_len=8192)
 print(f"ravena-airllm: carregado em {time.time()-t0:.0f}s", flush=True)
-print("ravena-airllm: pronto em :%d" % PORT, flush=True)
+print(f"ravena-airllm: pronto em :{PORT}", flush=True)
 
 from wsgiref.simple_server import make_server
 
@@ -30,11 +35,7 @@ def chat_completion(messages):
         for m in messages:
             role = m.get("role", "user")
             content = m.get("content", "")
-            if role == "system":
-                prompt += content + "\n"
-            elif role == "user":
-                prompt += content + "\n"
-            elif role == "assistant":
+            if role == "system" or role == "user" or role == "assistant":
                 prompt += content + "\n"
         prompt = prompt.strip()
         if not prompt:
@@ -69,7 +70,7 @@ def application(environ, start_response):
             payload = json.dumps(resp).encode()
             start_response("200 OK", [("Content-Type", "application/json"), ("Content-Length", str(len(payload)))])
             return [payload]
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             err = json.dumps({"error": {"message": str(e)}}).encode()
             start_response("500 Internal Server Error", [("Content-Type", "application/json")])
             return [err]
@@ -82,5 +83,5 @@ def application(environ, start_response):
 
 if __name__ == "__main__":
     server = make_server("0.0.0.0", PORT, application)
-    print("ravena-airllm: servindo em http://0.0.0.0:%d/v1/chat/completions" % PORT, flush=True)
+    print(f"ravena-airllm: servindo em http://0.0.0.0:{PORT}/v1/chat/completions", flush=True)
     server.serve_forever()
