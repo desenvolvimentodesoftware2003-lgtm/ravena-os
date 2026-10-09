@@ -25,9 +25,9 @@ fi
 [ -d "$MODELOS" ] || MODELOS="/home/ravena/os/modelos"
 
 # --- 1. prioridade: GGUF L3-Dark-Planet-8B via llama-server (MHA puro;
-#    nota original diz 3.78 tok/s - contexto nao documentado. Medido DENTRO do
-#    ravena-llm.service: ~0.59 tok/s, porque CPUQuota=90% + 1 thread = 0.9 de
-#    1 CPU. Ver LLM_THREADS abaixo) ---
+#    nota original diz 3.78 tok/s - contexto nao documentado. Medido com o
+#    servico travado em CPUQuota=90% + 1 thread: ~0.59 tok/s. Servico sem
+#    quota desde o commit que trocou quota por peso (ver LLM_THREADS) ---
 F=""
 for q in "$LLM_QUANT" "Q4_k_s" "Q5_k_s"; do
   f="$MODELOS/L3-Dark-Planet-8B-D_AU-${q}.gguf"
@@ -36,13 +36,13 @@ done
 [ -z "$F" ] && F=$(ls "$MODELOS"/L3-Dark-Planet*gguf 2>/dev/null | head -1)
 if [ -n "$F" ] && [ -f "$F" ]; then
   echo "ravena-llm: provendo GGUF em $(basename "$F") na :$LLM_PORT"
-  # --threads NAO usa $(nproc): o ravena-llm.service roda com CPUQuota=90% e o
-  # nproc do coreutils passa a reportar 1 unidade nesse cgroup (medido: affinity
-  # 0-3, cpu.max 90000 100000, nproc=1). Com cpu.max em 0.9 de 1 CPU, >1 thread
-  # so faz os threads briguarem pelo mesmo cap (throttle a cada 100ms) - 1 e o
-  # valor certo, mas agora e explicito e sobrescrevivel (LLM_THREADS) em vez de
-  # derivado por acidente do cgroup. Remover CPUQuota exige rever isto.
-  LLM_THREADS="${LLM_THREADS:-1}"
+  # --threads segue o nproc do cgroup. O ravena-llm.service NAO tem CPUQuota
+  # (removido de proposito: o limite passou a ser so CPUWeight=10 no slice
+  # ravena-llm.slice), entao nproc = numero real de CPUs (4 na VM Ravena-Train).
+  # Com CPUQuota no servico o nproc reporta quota/100 (medido: 90%->1,
+  # 200%->2, 400%->4) e o llama-server nasce com 1 thread = 0.59 tok/s.
+  # Sobrescrevivel via LLM_THREADS em /etc/ravena/llm.conf.
+  LLM_THREADS="${LLM_THREADS:-$(nproc)}"
   exec llama-server -m "$F" -c 4096 --port "$LLM_PORT" -fit off --load-mode mmap \
     --threads "$LLM_THREADS" --host 127.0.0.1
 fi
