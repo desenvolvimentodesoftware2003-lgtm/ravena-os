@@ -79,3 +79,5 @@ netexec | netexec | nao_aplica | doc2#72
 responder | responder | nao_aplica | doc2#72
 peass-ng | peass-ng | nao_aplica | doc2#72
 sherlock | sherlock | nao_aplica | doc1#12
+python | python | nao_aplica | plano-OS-1
+nodejs | nodejs | nao_aplica | plano-OS-1

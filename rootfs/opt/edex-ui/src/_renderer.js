@@ -471,10 +471,10 @@ async function initUI() {
     shellContainer.innerHTML += `
         <ul id="main_shell_tabs">
             <li id="shell_tab0" onclick="window.focusShellTab(0);" class="active"><p>SHELL PRINCIPAL</p></li>
-            <li id="shell_tab1" onclick="window.focusShellTab(1);"><p>VAZIO</p></li>
-            <li id="shell_tab2" onclick="window.focusShellTab(2);"><p>VAZIO</p></li>
-            <li id="shell_tab3" onclick="window.focusShellTab(3);"><p>VAZIO</p></li>
-            <li id="shell_tab4" onclick="window.focusShellTab(4);"><p>VAZIO</p></li>
+            <li id="shell_tab1" onclick="window.focusShellTab(1);"><p>PYTHON</p></li>
+            <li id="shell_tab2" onclick="window.focusShellTab(2);"><p>NODE</p></li>
+            <li id="shell_tab3" onclick="window.focusShellTab(3);"><p>SHELL 2</p></li>
+            <li id="shell_tab4" onclick="window.focusShellTab(4);"><p>SHELL 3</p></li>
         </ul>
         <div id="main_shell_innercontainer">
             <pre id="terminal0" class="active"></pre>
@@ -568,6 +568,10 @@ window.remakeKeyboard = layout => {
     ipc.send("setKbOverride", layout);
 };
 
+// RAVENA E-2: abas com proposito - o rotulo que a aba mostra antes de abrir
+// (e volta a mostrar quando o terminal dela fecha).
+const ABA_PROPOSITO = {1: "PYTHON", 2: "NODE", 3: "SHELL 2", 4: "SHELL 3"};
+
 window.focusShellTab = number => {
     window.audioManager.folder.play();
 
@@ -593,7 +597,7 @@ window.focusShellTab = number => {
         window.term[number] = null;
 
         document.getElementById("shell_tab"+number).innerHTML = "<p>CARREGANDO...</p>";
-        ipc.send("ttyspawn", "true");
+        ipc.send("ttyspawn", String(number));
         ipc.once("ttyspawn-reply", (e, r) => {
             if (r.startsWith("ERROR")) {
                 document.getElementById("shell_tab"+number).innerHTML = "<p>ERRO</p>";
@@ -608,9 +612,18 @@ window.focusShellTab = number => {
 
                 window.term[number].onclose = e => {
                     delete window.term[number].onprocesschange;
-                    document.getElementById("shell_tab"+number).innerHTML = "<p>VAZIO</p>";
+                    document.getElementById("shell_tab"+number).innerHTML = `<p>${ABA_PROPOSITO[number]}</p>`;
+                    // RAVENA E-2: dispose do xterm pode lancar (addon WebGL
+                    // ja morto -> "onRequestRedraw of undefined"); se o
+                    // throw escapar, delete + PREVIOUS_TAB nao rodam e a
+                    // aba fica presa no estado morto. Catch + DOM limpo
+                    // depois do dispose (dispose com DOM intacto).
+                    try {
+                        window.term[number].term.dispose();
+                    } catch (err) {
+                        console.log("e2: dispose do terminal " + number + " falhou: " + err);
+                    }
                     document.getElementById("terminal"+number).innerHTML = "";
-                    window.term[number].term.dispose();
                     delete window.term[number];
                     window.useAppShortcut("PREVIOUS_TAB");
                 };

@@ -24,7 +24,7 @@
 #
 # categoria (enumerado, o teste valida):
 #   integridade | rede | deteccao | forense | antivirus | auditoria |
-#   pentest | osint | scanner | conteudo
+#   pentest | osint | scanner | conteudo | runtime
 #
 # COMO INSTALAR (manual, nunca automatico no build):
 #   extra : sudo pacman -S --needed <pacote>
@@ -48,6 +48,8 @@ nmap | extra | rede | doc2#45 | scanner de portas/servicos em rede
 clamav | extra | antivirus | plano-OS-1 | antivirus de base; nao consta dos .docx
 fail2ban | extra | rede | plano-OS-1 | ban de IPs por padrao de ataque no auth log
 lynis | extra | auditoria | plano-OS-1 | auditoria de hardening; nao consta dos .docx
+python | extra | runtime | plano-OS-1 | runtime nativo da OS; REPL da aba PYTHON do eDEX
+nodejs | extra | runtime | plano-OS-1 | runtime nativo da OS; REPL da aba NODE do eDEX (npm)
 
 # ------------------------------------------------------------------- aur ----
 suricata | aur | rede | doc2#72 | IDS/NSM com regras

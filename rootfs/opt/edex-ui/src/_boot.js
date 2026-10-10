@@ -307,6 +307,15 @@ app.on('ready', async () => {
         }
     });
 
+    // RAVENA E-2: abas com proposito. O renderer manda o numero da aba no
+    // ttyspawn: "1" = aba PYTHON, "2" = aba NODE; "3"/"4" (e qualquer outro
+    // valor) caem no shell padrao. params sao os args do pty e tem de ser
+    // array com tamanho >0 -- vazio cai em ["--login"] (terminal.class.js)
+    // e "python --login" nao existe.
+    const abasProposito = {
+        "1": {shell: "python", params: ["-i"]},
+        "2": {shell: "node", params: ["--interactive"]}
+    };
     ipc.on("ttyspawn", (e, arg) => {
         let port = null;
         Object.keys(extraTtys).forEach(key => {
@@ -321,10 +330,11 @@ app.on('ready', async () => {
             e.sender.send("ttyspawn-reply", "ERROR: max number of ttys reached");
         } else {
             signale.pending(`Creating new TTY process on port ${port}`);
+            const cfg = abasProposito[arg];
             let term = new Terminal({
                 role: "server",
-                shell: settings.shell,
-                params: settings.shellArgs || '',
+                shell: cfg ? cfg.shell : settings.shell,
+                params: cfg ? cfg.params : (settings.shellArgs || ''),
                 cwd: tty.tty._cwd || settings.cwd,
                 env: cleanEnv,
                 port: port
@@ -332,6 +342,11 @@ app.on('ready', async () => {
             signale.success(`New terminal back-end initialized at ${port}`);
             term.onclosed = (code, signal) => {
                 term.ondisconnected = () => {};
+                // RAVENA E-2: wss.close() so fecha o listener; sem matar os
+                // clientes ja conectados o socket do front fica vivo, o
+                // onclose do renderer (terminal.class.js) nunca dispara e a
+                // aba fica presa no estado morto com rotulo vazio.
+                if (term.wss.clients) term.wss.clients.forEach(c => c.terminate());
                 term.wss.close();
                 signale.complete(`TTY exited at ${port}`, code, signal);
                 extraTtys[term.port] = null;
