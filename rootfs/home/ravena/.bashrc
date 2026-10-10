@@ -1,7 +1,7 @@
 # RAVENA L1 - locale pt_BR
 [ -z "$LANG" ] && export LANG=pt_BR.UTF-8 LC_ALL=pt_BR.UTF-8 LANGUAGE=pt_BR
 # RAVENA OS - .bashrc (ravena)
-PS1='[\033[0;36mravena\033[0m@\h \W]\$ '
+PS1='[\[\033[0;36m\]ravena\[\033[0m\]@\h \W]\$ '
 
 alias ll='ls -la'
 alias edex='cd /opt/edex-ui && ./node_modules/.bin/electron . --no-sandbox'
