@@ -1,0 +1,26 @@
+# RAVENA - configuração do AdGuard Home (Bloco I / doc2#060)
+#
+# OPT-IN: sobe em 127.0.0.1:53 (IP diferente do stub do systemd-resolved em
+# 127.0.0.53) e NAO recebe trafego ate o operador apontar o DNS para la.
+# Painel de administracao so em localhost (127.0.0.1:3000).
+# schema_version: ausente de proposito -- o AdGuard Home preenche/migra na
+# primeira execucao e regrava o arquivo com a versao da propria build.
+http:
+  address: 127.0.0.1:3000
+  session_ttl: 720h
+dns:
+  bind_host: 127.0.0.1
+  bind_port: 53
+  upstream_dns:
+    - https://one.one.one.one/dns-query
+    - https://dns.quad9.net/dns-query
+  bootstrap_dns:
+    - 9.9.9.9
+    - 149.112.112.112
+  aaaa_enabled: true
+  enable_edns_client_subnet: false
+filters:
+  - enabled: true
+    url: https://adguardteam.github.io/AdGuardSDNSFilter/Filters/filter.txt
+    name: AdGuard DNS filter
+    id: 1

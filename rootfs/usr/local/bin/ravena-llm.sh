@@ -43,8 +43,18 @@ if [ -n "$F" ] && [ -f "$F" ]; then
   # 200%->2, 400%->4) e o llama-server nasce com 1 thread = 0.59 tok/s.
   # Sobrescrevivel via LLM_THREADS em /etc/ravena/llm.conf.
   LLM_THREADS="${LLM_THREADS:-$(nproc)}"
+  # --- CORS (Bloco I): origens de browser que podem chamar a API. ---
+  # Feature-detection: so passa --cors-origins se ESTA build do llama-server
+  # tiver o flag (builds antigos nao tem; flag desconhecida = aborto na
+  # largada). Default restrito (localhost); LLM_CORS_ORIGINS=* em
+  # /etc/ravena/llm.conf restaura o comportamento upstream.
+  LLM_CORS_ORIGINS="${LLM_CORS_ORIGINS:-localhost}"
+  CORS_ARGS=()
+  if llama-server --help 2>&1 | grep -q -e "--cors-origins"; then
+    CORS_ARGS=(--cors-origins "$LLM_CORS_ORIGINS")
+  fi
   exec llama-server -m "$F" -c 4096 --port "$LLM_PORT" -fit off --load-mode mmap \
-    --threads "$LLM_THREADS" --host 127.0.0.1
+    --threads "$LLM_THREADS" --host 127.0.0.1 ${CORS_ARGS[@]+"${CORS_ARGS[@]}"}
 fi
 
 # --- 2. fallback: airLLM text-only (safetensors convertido) ---

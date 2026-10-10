@@ -1,0 +1,91 @@
+# RAVENA OS -- OS-1: manifesto declarativo de pacotes da camada OS
+#
+# O que e: lista FECHADA e verificada do que entra (ou nao entra) na camada OS
+# do Ravena OS. Nada disto esta instalado pelo build (`build_rv10v20.sh` so faz
+# mksquashfs+xorriso) -- o rootfs e preparado antes. Este arquivo e a FONTE
+# DECLARATIVA para poder reconstruir um host do zero e para nao deixar
+# ferramenta virar "paquete solto" sem origem.
+#
+# FORMATO -- 5 campos, separados por " | ", sem espaco antes/depois:
+#   pacote | repo | categoria | origem | nota
+#
+# repo (enumerado, o teste valida):
+#   extra       = repo oficial Arch (extra/core)  -- verificado em 2026-10-09
+#   aur         = AUR                              -- verificado em 2026-10-09
+#   nao_pacote  = aparece no catalogo mas NAO e pacote instalavel
+#                 (lista, lab, dados, distro, VM)
+#   rejeitado   = candidato do catalogo que NAO entra, com motivo= na nota
+#
+# origem (enumerado, o teste valida):
+#   doc1#<n>    = indice n do manifesto de repos do 1o .docx
+#   doc2#<n>    = indice n do manifesto de repos do 2o .docx
+#   plano-OS-1  = piso basico de host Linux, decidido no plano e NAO consta
+#                 dos .docx (usado so para clamav/fail2ban/lynis)
+#
+# categoria (enumerado, o teste valida):
+#   integridade | rede | deteccao | forense | antivirus | auditoria |
+#   pentest | osint | scanner | conteudo
+#
+# COMO INSTALAR (manual, nunca automatico no build):
+#   extra : sudo pacman -S --needed <pacote>
+#   aur   : yay -S --needed <pacote>          (exige yay; AUR = build manual)
+#
+# VERIFICACAO DA ORIGEM DOS DADOS:
+#   extra : https://archlinux.org/packages/search/json/?name=<pacote>
+#   aur   : https://aur.archlinux.org/rpc/v5/info?arg[]=<pacote>
+#   Ambos consultados em 2026-10-09. Pacote marcado "extra" ou "aur" SEM ter
+#   sido achado nessas duas fontes = bug de manifesto.
+
+# ---------------------------------------------------------------- extra ----
+osquery | extra | integridade | doc2#72 | telemetria de endpoint (osqueryi/osqueryd)
+yara | extra | deteccao | doc2#72 | regras de deteccao em arquivos e memoria
+volatility3 | extra | forense | doc2#72 | analise de memoria volatil
+impacket | extra | pentest | doc2#72 | libs/CLIs de protocolos Microsoft
+metasploit | extra | pentest | doc2#72 | catalogo de exploits (origem rapid7/metasploit-framework)
+zaproxy | extra | pentest | doc2#72 | proxy interceptador de testes web
+trivy | extra | scanner | doc2#72 | varredura de imagens, filesystem e dependencias
+nmap | extra | rede | doc2#45 | scanner de portas/servicos em rede
+clamav | extra | antivirus | plano-OS-1 | antivirus de base; nao consta dos .docx
+fail2ban | extra | rede | plano-OS-1 | ban de IPs por padrao de ataque no auth log
+lynis | extra | auditoria | plano-OS-1 | auditoria de hardening; nao consta dos .docx
+
+# ------------------------------------------------------------------- aur ----
+suricata | aur | rede | doc2#72 | IDS/NSM com regras
+zeek | aur | rede | doc2#72 | analise de trafego e logs de rede
+wazuh-agent | aur | integridade | doc2#72 | agente de monitoramento/Integridade (origem wazuh/wazuh)
+sigma | aur | deteccao | doc2#72 | ferramenta de regras de deteccao (SigmaHQ/sigma)
+chainsaw | aur | deteccao | doc2#72 | caca a eventos/IOCs em logs
+amass | aur | osint | doc2#72 | enumeracao de subdominios (owasp-amass/amass)
+subfinder | aur | osint | doc2#72 | enumeracao de subdominios (projectdiscovery)
+httpx | aur | osint | doc2#72 | probing HTTP em massa (projectdiscovery)
+nuclei | aur | scanner | doc2#72 | scan por templates de vulnerabilidade
+bloodhound | aur | pentest | doc2#72 | mapeamento de grafos de AD (SpecterOps/BloodHound)
+netexec | aur | pentest | doc2#72 | enumeracao/executor remoto em rede
+responder | aur | pentest | doc2#72 | spoofing LLMNR/NBT-NS/MDNS
+peass-ng | aur | pentest | doc2#72 | escalada de privilegio local (PEASS-ng)
+sherlock | aur | osint | doc1#12 | busca de usernames em redes
+
+# ---------------------------------------------------------- nao_pacote ----
+SecLists | nao_pacote | conteudo | doc2#72 | wordlists; conteudo, nao daemon
+PayloadsAllTheThings | nao_pacote | conteudo | doc2#72 | payloads/referencia; nao e binario
+coreruleset | nao_pacote | conteudo | doc2#72 | regras ModSecurity; nao e pacote
+attack-stix-data | nao_pacote | conteudo | doc2#72 | dados MITRE ATT&CK em STIX
+juice-shop | nao_pacote | conteudo | doc2#72 | app web vulneravel de treino
+WebGoat | nao_pacote | conteudo | doc2#72 | app web vulneravel de treino
+cloudgoat | nao_pacote | conteudo | doc2#72 | lab de AWS falho de proposito
+DetectionLab | nao_pacote | conteudo | doc2#72 | e uma VM (VirtualBox/VMware), nao um pacote
+securityonion | nao_pacote | conteudo | doc2#72 | e uma DISTRIBUICAO Linux inteira
+caldera | nao_pacote | conteudo | doc2#72 | plataforma de simulacao (precisa de servico web)
+atomic-red-team | nao_pacote | conteudo | doc2#72 | suite de testes atomicos (scripts)
+
+# ------------------------------------------------------------- rejeitado ----
+ufw | rejeitado | rede | plano-OS-1 | motivo=conflita com o firewall nftables ja ativo (ravena-sec-firewall.service + ravena-sec-firewall.nft)
+mimikatz | rejeitado | pentest | doc2#72 | motivo=ferramenta Windows-only, nao roda em Linux/Arch
+arkime | rejeitado | rede | doc2#72 | motivo=sem pacote em repo oficial nem no AUR
+velociraptor | rejeitado | integridade | doc2#72 | motivo=sem pacote em repo oficial nem no AUR
+evilginx2 | rejeitado | pentest | doc2#72 | motivo=sem pacote em repo oficial nem no AUR
+semgrep | rejeitado | scanner | doc2#72 | motivo=sem pacote em repo oficial nem no AUR (pip-only)
+prowler | rejeitado | scanner | doc2#72 | motivo=sem pacote em repo oficial nem no AUR (pip-only)
+scoutsuite | rejeitado | scanner | doc2#72 | motivo=sem pacote em repo oficial nem no AUR (pip-only)
+crackmapexec | rejeitado | pentest | doc2#72 | motivo=obsoleto; renomeado para netexec (presente no AUR)
+volatility | rejeitado | forense | plano-OS-1 | motivo=linha v2 suplantada por volatility3 (ja no manifesto)

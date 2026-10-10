@@ -1,0 +1,21 @@
+# RAVENA ADGUARD HOME - DNS com filtro (Bloco I / doc2#060)
+# Inerte por padrao: binario ausente -> wrapper sai com 0 -> servico
+# "inactive (dead)", sem loop (Restart=on-failure soage em falha real).
+# O systemd-resolved (127.0.0.53) continua dono do DNS ate o operador
+# apontar uma interface para 127.0.0.1 -- ver ravena-adguard.sh.
+[Unit]
+Description=RAVENA AdGuard Home (DNS com filtro, opt-in)
+Documentation=https://github.com/AdguardTeam/AdGuardHome
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/ravena-adguard.sh
+Restart=on-failure
+RestartSec=10
+CPUWeight=10
+Nice=5
+
+[Install]
+WantedBy=multi-user.target

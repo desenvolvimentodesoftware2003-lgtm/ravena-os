@@ -1,0 +1,81 @@
+# RAVENA OS -- OS-2: mapa pacote -> unit systemd
+#
+# O que e: para CADA pacote do OS-1 e para CADA unit ravena-* que ja existe no
+# repo, diz qual unit systemd correspondente e se ela ja existe aqui ou so
+# aparece depois da instalacao. Serve para nao inventar unidade duplicada e para
+# o build saber o que habilitar.
+#
+# FORMATO -- 4 campos, separados por " | ", sem espaco antes/depois:
+#   pacote | unit | estado | origem
+#
+# pacote: nome exato como em pacotes-os.txt, ou "ravena" (unidades proprias)
+# unit  : nome da unit SEM caminho. "ravena-*" = nossa. Outros = upstream.
+# estado (enumerado, o teste valida):
+#   existe_repo = o arquivo da unit JA esta em rootfs/etc/systemd/system/
+#   pendente    = a unit so aparece depois que o pacote for instalado
+#   nao_aplica  = o pacote e CLI/library puro, nao sobe daemon
+# origem: doc1#<n> | doc2#<n> | plano-OS-1 | plano-OS-2 | upstream
+#
+# SYMLINKS (modo 120000) -- no Windows o Git materializa isto como arquivo de
+# texto; o conteudo e checado pelo indice (`git ls-files -s`), nao por find.
+# Hoje ha exatamente 6, todos para units do systemd-networkd (upstream):
+#   systemd-networkd.service / .socket / -wait-online.service /
+#   -varlink.socket / -varlink-metrics.socket / -resolve-hook.socket
+# Nenhuma unit ravena-* esta habilitada por symlink no repo -- habilitacao
+# acontece no preparo do rootfs, fora do git.
+
+# ---------------------------------------------- unidades proprias (ravena) --
+ravena | ravena-adguard.service | existe_repo | doc2#060
+ravena | ravena-backup.service | existe_repo | plano-OS-2
+ravena | ravena-backup.timer | existe_repo | plano-OS-2
+ravena | ravena-chage.service | existe_repo | plano-OS-2
+ravena | ravena-data.service | existe_repo | plano-OS-2
+ravena | ravena-health.service | existe_repo | plano-OS-2
+ravena | ravena-llm.service | existe_repo | plano-OS-2
+ravena | ravena-llm.slice | existe_repo | plano-OS-2
+ravena | ravena-net.service | existe_repo | plano-OS-2
+ravena | ravena-nextboot-clean.service | existe_repo | plano-OS-2
+ravena | ravena-ntp.service | existe_repo | plano-OS-2
+ravena | ravena-sec-firewall.service | existe_repo | plano-OS-2
+ravena | ravena-shield.service | existe_repo | plano-OS-2
+ravena | ravena-swap.service | existe_repo | plano-OS-2
+ravena | ravena-trading.slice | existe_repo | plano-OS-2
+
+# ------------------------------------------- unidades upstream (symlink) ----
+# as 6 abaixo existem no repo como symlink 120000 apontando para /usr/lib/systemd/system/
+ravena | systemd-networkd.service | existe_repo | upstream
+ravena | systemd-networkd.socket | existe_repo | upstream
+ravena | systemd-networkd-wait-online.service | existe_repo | upstream
+ravena | systemd-networkd-varlink.socket | existe_repo | upstream
+ravena | systemd-networkd-varlink-metrics.socket | existe_repo | upstream
+ravena | systemd-networkd-resolve-hook.socket | existe_repo | upstream
+
+# ------------------------------------------------------- pacotes do OS-1 ----
+# camada que sobe daemon depois da instalacao
+osquery | osqueryd.service | pendente | doc2#72
+clamav | clamd.service | pendente | plano-OS-1
+fail2ban | fail2ban.service | pendente | plano-OS-1
+suricata | suricata.service | pendente | doc2#72
+zeek | zeek.service | pendente | doc2#72
+wazuh-agent | wazuh-agent.service | pendente | doc2#72
+
+# pacotes CLI/library -- nao ha daemon para habilitar
+nmap | nmap | nao_aplica | doc2#45
+yara | yara | nao_aplica | doc2#72
+volatility3 | volatility3 | nao_aplica | doc2#72
+lynis | lynis | nao_aplica | plano-OS-1
+sigma | sigma | nao_aplica | doc2#72
+chainsaw | chainsaw | nao_aplica | doc2#72
+amass | amass | nao_aplica | doc2#72
+subfinder | subfinder | nao_aplica | doc2#72
+httpx | httpx | nao_aplica | doc2#72
+nuclei | nuclei | nao_aplica | doc2#72
+impacket | impacket | nao_aplica | doc2#72
+metasploit | metasploit | nao_aplica | doc2#72
+zaproxy | zaproxy | nao_aplica | doc2#72
+trivy | trivy | nao_aplica | doc2#72
+bloodhound | bloodhound | nao_aplica | doc2#72
+netexec | netexec | nao_aplica | doc2#72
+responder | responder | nao_aplica | doc2#72
+peass-ng | peass-ng | nao_aplica | doc2#72
+sherlock | sherlock | nao_aplica | doc1#12
